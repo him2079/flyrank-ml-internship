@@ -1,0 +1,8 @@
+{
+  "precision_at_50_naive_split": 0.62,
+  "precision_at_50_grouped_split": 0.72,
+  "n_clients_train": 32,
+  "n_clients_test": 8,
+  "top_feature_coefficient": "ctr",
+  "model_type": "logistic_regression"
+}
