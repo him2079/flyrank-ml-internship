@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Content Refresh Prioritization: A Decision-Support Model on Real Search Data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FAFAF7;
+    --ink: #1A1A18;
+    --ink-soft: #4A4944;
+    --accent: #33475B;
+    --accent-soft: #6E8299;
+    --highlight: #B5793B;
+    --rule: #D8D5CC;
+    --panel: #F1EFE9;
+    --good: #3C6E52;
+    --warn: #9C4B3A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--highlight); color: var(--paper); }
+
+  a { color: var(--accent); text-decoration-color: var(--accent-soft); text-underline-offset: 3px; }
+  a:hover { color: var(--highlight); }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- Masthead ---------- */
+  header.masthead {
+    border-bottom: 1px solid var(--rule);
+    padding: 64px 0 40px;
+  }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 18px;
+  }
+  h1.title {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 700;
+    font-size: clamp(30px, 4.4vw, 42px);
+    line-height: 1.15;
+    margin: 0 0 20px;
+    letter-spacing: -0.01em;
+  }
+  .byline {
+    font-size: 15px;
+    color: var(--ink-soft);
+  }
+  .byline .sep { color: var(--rule); margin: 0 8px; }
+
+  /* ---------- Abstract ---------- */
+  .abstract {
+    background: var(--panel);
+    border-left: 3px solid var(--accent);
+    padding: 26px 28px;
+    margin: 40px 0 8px;
+    font-size: 15.5px;
+    color: var(--ink-soft);
+  }
+  .abstract .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  /* ---------- Body sections ---------- */
+  main { padding: 20px 0 80px; }
+
+  section { margin-top: 58px; }
+
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .sec-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--accent-soft);
+    min-width: 26px;
+  }
+  h2 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 25px;
+    margin: 0;
+    letter-spacing: -0.005em;
+  }
+
+  h3 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 18px;
+    margin: 28px 0 10px;
+  }
+
+  p { margin: 0 0 16px; color: var(--ink); }
+  section p, section li { color: #2B2A26; }
+
+  ul, ol { padding-left: 22px; margin: 0 0 16px; }
+  li { margin-bottom: 8px; }
+
+  code, .mono { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; background: var(--panel); padding: 1px 5px; border-radius: 3px; color: var(--accent); }
+
+  .callout {
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--warn);
+    background: #FBF6F1;
+    padding: 16px 20px;
+    font-size: 15px;
+    color: var(--ink-soft);
+    margin: 18px 0;
+  }
+  .callout.good { border-left-color: var(--good); background: #F2F7F4; }
+
+  /* ---------- Results ledger (signature element) ---------- */
+  .ledger {
+    border: 1px solid var(--rule);
+    margin: 24px 0;
+    background: #FFFFFF;
+  }
+  .ledger-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .ledger-row:last-child { border-bottom: none; }
+  .ledger-row.win { background: #FBF3E7; }
+  .ledger-method { font-size: 15px; }
+  .ledger-method .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+    display: block;
+    margin-top: 2px;
+  }
+  .ledger-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+  }
+  .ledger-row.win .ledger-score { color: var(--highlight); font-weight: 600; }
+
+  figure { margin: 28px 0; }
+  figure img {
+    width: 100%;
+    border: 1px solid var(--rule);
+    display: block;
+  }
+  figcaption {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14.5px;
+    margin: 20px 0;
+  }
+  table.data-table th, table.data-table td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  table.data-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+
+  .no-go {
+    list-style: none;
+    padding: 0;
+  }
+  .no-go li {
+    padding-left: 26px;
+    position: relative;
+  }
+  .no-go li::before {
+    content: "✕";
+    position: absolute;
+    left: 0;
+    color: var(--warn);
+    font-weight: 600;
+  }
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+  }
+  .checklist li {
+    padding-left: 26px;
+    position: relative;
+  }
+  .checklist li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--good);
+    font-weight: 600;
+  }
+
+  /* ---------- Footer / acknowledgments ---------- */
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 40px 0 60px;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+  }
+  footer .credit {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  @media (max-width: 600px) {
+    header.masthead { padding: 44px 0 32px; }
+    .ledger-row { padding: 14px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow">FlyRank ML Internship &middot; Applied Search Intelligence &middot; Capstone</div>
+    <h1 class="title">Content Refresh Prioritization: A Decision-Support Model on Real Search Data</h1>
+    <div class="byline">Hayat Mume <span class="sep">&middot;</span> RIT Dubai, Cybersecurity <span class="sep">&middot;</span> August 2026</div>
+  </header>
+
+  <div class="abstract">
+    <span class="label">Abstract</span>
+    Content teams routinely have more declining pages than time to review them, and a simple sort by traffic drop ignores the interaction between visibility, position, and click behavior that separates a genuine problem from noise. This paper builds and validates a decision-support model that ranks pages for review using 9.8 million rows from a real production search warehouse, one development month, one lane. A logistic regression model beat a transparent rule-based baseline by roughly 3&ndash;4x on Precision@50, but the more interesting result was procedural: a baseline signal was caught and discarded as broken before it shipped, and a second validation pass showed the same model's reported score shift meaningfully depending on which honest train/test split was used. The paper reports both results plainly, ships a ranked action playbook with explicit no-go rules for what should never be automated, and treats its own confidence as something to be checked, not assumed.
+  </div>
+
+  <main>
+
+    <section>
+      <div class="sec-head"><span class="sec-num">01</span><h2>Introduction</h2></div>
+      <p>Most SEO and content teams accumulate more underperforming pages than they have hours to review. The bottleneck isn't spotting a problem page &mdash; it's deciding, out of hundreds of candidates, which one to fix first. A naive answer sorts by raw traffic drop. That answer is wrong often enough to matter: a small decline on a high-intent commercial page can be worth more attention than a large decline on a low-value informational one. The signal that determines priority isn't one column, it's an interaction between several &mdash; which is what makes this a modeling problem rather than a spreadsheet sort.</p>
+      <p>This work treats that prioritization question as a decision-support task: rank pages so a human reviewer with limited capacity spends it on the most promising candidates first, with reasons attached to every recommendation and explicit limits on what the model is and isn't claiming.</p>
+      <h3>Decision, action, cost</h3>
+      <p>The output feeds a content strategist's weekly refresh queue. If the ranking is wrong &mdash; flagging a low-impact page as urgent, or missing a high-impact one &mdash; the cost is wasted editorial hours on a page that was never going to move, while a page that actually mattered keeps declining, unreviewed.</p>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="sec-num">02</span><h2>Data</h2></div>
+      <p>All modeling uses the <span class="mono">FlyRank/internship-warehouse</span> release (build <span class="mono">flyrank_pseudonymized_warehouse_release_v20260703</span>), table <span class="mono">fact_content_daily_performance</span>, filtered to <span class="mono">month=2026-03</span> as a mid-panel development window. The release's final month is deliberately excluded from every step of development &mdash; it is a sealed test window, and touching it early would mean tuning against the future the model is meant to predict.</p>
+
+      <table class="data-table">
+        <tr><th>Property</th><th>Value</th></tr>
+        <tr><td>Grain</td><td>one content item &times; one day &times; one client</td></tr>
+        <tr><td>Rows in slice</td><td>9,841,378</td></tr>
+        <tr><td>Date span</td><td>2026-03-01 &ndash; 2026-03-31</td></tr>
+        <tr><td>Rows with GA4 data available</td><td>413,966 (4.2%)</td></tr>
+      </table>
+
+      <p>The grain claim was verified directly: grouping by client, content, and date and checking for any group larger than one row returned zero duplicates. GSC-derived features (impressions, clicks, position) are reliable across nearly the full slice; GA4-derived features (sessions, engagement) are reliable for only the 4.2% of rows where a client's analytics tracking was active, since coverage varies per client.</p>
+
+      <div class="callout">
+        <strong>Excluded on purpose.</strong> FlyRank's own product decision fields (health score, priority score, action type) are not present in this data, and that exclusion is intentional, not incidental &mdash; feeding a rebuilt product flag back in as a feature would let a model copy an existing answer rather than discover real signal. AI-referral session data was also excluded from modeling: it is present in the warehouse but extremely sparse (roughly 30K rows with AI sessions against 78.8M total daily rows warehouse-wide), too thin to support a reliable binary signal.
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="sec-num">03</span><h2>Methodology</h2></div>
+
+      <h3>Label</h3>
+      <p>The target is a future-outcome label, not a same-window snapshot: for each client&ndash;content pair, clicks in the first half of the month (Mar 1&ndash;15) are compared against clicks in the second half (Mar 16&ndash;31). A page is labeled declining when later-window clicks fall below earlier-window clicks. Every feature is computed only from the first half &mdash; strictly before the point the label is measured.</p>
+
+      <h3>Features</h3>
+      <p>Four observed, pre-decision-point signals: impressions, clicks, average search position, and click-through rate &mdash; all summed or averaged over the March 1&ndash;15 window only.</p>
+
+      <h3>Baseline</h3>
+      <p>Before building any rule, two candidate signals were checked directly against the data rather than assumed:</p>
+      <ul>
+        <li><strong>Staleness</strong> &mdash; intended to mirror FlyRank's refresh-flag logic. Verdict: <strong>false</strong>. The available date range only spans one month, so "days since first seen in this slice" cannot exceed 30 days and does not actually measure content staleness. The signal was dropped rather than built on.</li>
+        <li><strong>CTR vs. position</strong> &mdash; intended to mirror the CTR-fix logic. Verdict: <strong>confirmed</strong>. Weighted CTR fell clearly as position tier worsened, most sharply past position 20.</li>
+      </ul>
+      <p>The surviving baseline rule scores pages by CTR gap relative to their <em>position-tier</em> median &mdash; not the dataset-wide median, which is pulled down hard by a large share of near-zero-click rows and would otherwise flatten almost every page's score to zero.</p>
+
+      <h3>Model and split design</h3>
+      <p>Logistic regression was compared against random forest. The split is grouped by client (32 train, 8 test, zero client overlap verified) rather than a random row split, since pages from the same client likely share template and traffic patterns &mdash; a random split risks a model partly memorizing client-specific quirks instead of learning a generalizable signal.</p>
+
+      <h3>Leakage audit</h3>
+      <p>The final feature set was checked against a standard leakage checklist: no feature is calculated after the decision point; the feature and label windows do not overlap; no product-decision field was used as a feature; no derived field secretly encodes the target; and the grouped split was confirmed to have zero client overlap between train and test.</p>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="sec-num">04</span><h2>Results</h2></div>
+      <p>On the same client-holdout split, at Precision@50 &mdash; of the top 50 pages ranked highest, the share that were genuinely declining:</p>
+
+      <div class="ledger">
+        <div class="ledger-row">
+          <div class="ledger-method">Baseline rule<span class="tag">CTR gap vs. position-tier median</span></div>
+          <div class="ledger-score">0.18</div>
+        </div>
+        <div class="ledger-row win">
+          <div class="ledger-method">Logistic regression<span class="tag">winning model</span></div>
+          <div class="ledger-score">0.74</div>
+        </div>
+        <div class="ledger-row">
+          <div class="ledger-method">Random forest<span class="tag">200 trees, depth 6</span></div>
+          <div class="ledger-score">0.62</div>
+        </div>
+      </div>
+
+      <p>Both models substantially beat the baseline, but the simpler model won. With only 32 training clients and four features, random forest's added flexibility likely overfit noise that logistic regression's linear boundary avoided &mdash; a direct instance of complexity not paying for itself.</p>
+
+      <h3>What the model leans on</h3>
+      <p>Click-through rate dominates the model's coefficients &mdash; more than seven times the weight of the next largest feature. Low CTR is, by a wide margin, the strongest predictor of decline in this slice.</p>
+
+      <h3>Validation robustness check</h3>
+      <p>The same model was re-run under two split designs: a naive random split, which allows a client's pages to appear on both sides of train/test, and the honest grouped split used everywhere else in this paper.</p>
+
+      <table class="data-table">
+        <tr><th>Split</th><th>Precision@50</th></tr>
+        <tr><td>Naive random split</td><td>0.62</td></tr>
+        <tr><td>Grouped client split</td><td>0.72</td></tr>
+      </table>
+
+      <div class="callout">
+        <strong>This result runs counter to expectation.</strong> Leakage from a naive split is expected to inflate performance, not deflate it. With only 40 total clients in this slice, a single split &mdash; in either direction &mdash; is noisy enough to produce a surprising result on its own. This is reported plainly rather than smoothed into the tidier "leakage inflates scores" story, because the honest number is the point of this exercise, not a clean narrative.
+      </div>
+
+      <h3>Error pattern</h3>
+      <p>Of the top 20 highest-risk predictions, 15 correctly matched an actual decline. The 5 misses shared a pattern: somewhat higher click volume relative to impressions than the correct predictions around them &mdash; suggesting the model may slightly over-weight the raw CTR rate without fully separating "genuinely low CTR" from "low, but still respectable given real click volume."</p>
+
+      <figure>
+        <img src="assets/top20_risk_scores.png" alt="Bar chart of the top 20 pages ranked by predicted decline risk, showing risk scores clustered near 1.0">
+        <figcaption>fig. 1 &mdash; top 20 pages by predicted decline risk. Scores saturate near 1.0 across the entire top tier &mdash; see Limitations.</figcaption>
+      </figure>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="sec-num">05</span><h2>Limitations</h2></div>
+      <ul>
+        <li>Trained and validated on a single month from a client subset with uneven GA4 coverage (as low as 4.2% in places); not validated for clients or periods far outside this slice.</li>
+        <li>Precision@50 moved meaningfully (0.62 to 0.74) purely from changing the train/test split &mdash; with 40 total clients, any single reported number carries real uncertainty.</li>
+        <li>Risk scores for the top-ranked pages cluster very close to 1.0 with little internal differentiation (fig. 1) &mdash; the model is confident these pages are at risk, but does not finely rank <em>within</em> its own top tier.</li>
+        <li>Several top-ranked baseline candidates showed extreme patterns (100,000+ impressions, one click) that plausibly indicate a technical or tracking fault rather than a genuine content problem. This was not resolved and likely carries into the model's queue as well.</li>
+        <li>This work produces observed and directional findings, and a decision-support ranking &mdash; not causal proof that any specific fix improves rankings, and not a claim about how Google's ranking algorithm behaves.</li>
+      </ul>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="sec-num">06</span><h2>Ranked Recommendations</h2></div>
+      <p>Two reason codes drive the queue: <span class="mono">high_risk_low_ctr</span> (risk &ge; 0.65, CTR below the dataset median) maps to <em>rewrite title/meta</em>; <span class="mono">moderate_risk_review</span> (risk &ge; 0.5) maps to a lighter-touch <em>review and refresh</em>. Everything else is <em>monitor</em>: visible, not flagged this cycle.</p>
+
+      <h3>Intended use</h3>
+      <p>For a content strategist or SEO lead triaging a limited weekly queue &mdash; not for an automated publishing or editing pipeline.</p>
+
+      <h3>Required human review</h3>
+      <p>Before acting on any flag, confirm the underlying issue is a content or metadata problem and not a technical fault (a broken snippet, a redirect, an indexing failure) &mdash; several candidates in this dataset show patterns extreme enough to suggest the latter. Borderline <span class="mono">moderate_risk_review</span> calls are also worth a second look, since the dataset-median CTR comparison likely under-flags some genuinely poor performers.</p>
+
+      <h3>What should never be automated</h3>
+      <ul class="no-go">
+        <li>Publishing a rewrite without a human reviewing the actual page</li>
+        <li>Treating a risk score as a guarantee of decline, given how tightly the top tier clusters near 1.0</li>
+        <li>Bulk-editing pages based on score alone, given how much Precision@50 moved between validation splits</li>
+        <li>Any claim that this tool predicts Google's ranking algorithm</li>
+      </ul>
+
+      <h3>Monitoring &amp; retrain triggers</h3>
+      <p>Retrain before trusting the queue again if: the portfolio's CTR-vs-position relationship shifts meaningfully; a new client is added with materially different tracking coverage; Precision@50 on a fresh holdout month drops below 0.72; risk scores continue saturating near 1.0 across a growing share of the portfolio; or a known external event (an algorithm update, a site redesign) could invalidate the training period's assumptions.</p>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="sec-num">07</span><h2>Reproducibility</h2></div>
+      <p>Every step in this paper &mdash; the data contract, baseline, model, validation audit, and action playbook &mdash; is implemented as a standalone, runnable notebook in the project repository. Anyone with repo access can re-run the pipeline from a fresh clone.</p>
+      <table class="data-table">
+        <tr><th>Notebook</th><th>Covers</th></tr>
+        <tr><td><span class="mono">w01_research_question.ipynb</span></td><td>Lane, proof statement, decision/action/cost</td></tr>
+        <tr><td><span class="mono">w02_ml_task_framing.ipynb</span></td><td>Task type, target, success metric</td></tr>
+        <tr><td><span class="mono">w03_data_contract.ipynb</span></td><td>Data contract, verification queries, leakage trap</td></tr>
+        <tr><td><span class="mono">w04_baseline_score.ipynb</span></td><td>Signal checks, baseline rule, top-20 review</td></tr>
+        <tr><td><span class="mono">w05_model.ipynb</span></td><td>Model choice, split design, baseline comparison</td></tr>
+        <tr><td><span class="mono">w06_validation_audit.ipynb</span></td><td>Paper methodology critique, split robustness, leakage re-audit</td></tr>
+        <tr><td><span class="mono">w07_action_playbook.ipynb</span></td><td>Ranked queue, reason codes, exports</td></tr>
+        <tr><td><span class="mono">capstone.ipynb</span></td><td>Full synthesis mirroring this paper</td></tr>
+      </table>
+      <p>Repository: <a href="https://github.com/him2079/flyrank-ml-internship" target="_blank">github.com/him2079/flyrank-ml-internship</a></p>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Built as part of the FlyRank ML Internship &mdash; Applied Search Intelligence track.</p>
+    <p class="credit">Data source &amp; program: <a href="https://flyrank.ai" target="_blank">flyrank.ai</a></p>
+  </footer>
+</div>
+
+</body>
+</html>
